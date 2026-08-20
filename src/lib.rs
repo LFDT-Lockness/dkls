@@ -134,9 +134,9 @@ enum Verification<E: Curve> {
 /// Key share output from the protocol
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct KeyShare<E: Curve> {
-    /// Public key
+    /// Public key P(0)
     share_point_0: Point<E>,
-    /// Private key share
+    /// Private key share s_i := p(i + 1) for 0-based party index
     share_i: Scalar<E>,
 }
 
@@ -144,7 +144,7 @@ pub struct KeyShare<E: Curve> {
 pub async fn relaxed_key_generation<R, M, E>(
     mut mpc: M,
     i: PartyIndex, // Party 0, 1, ..., n - 1
-    n: PartyIndex, // `1 <= n`
+    n: PartyIndex, // `2 <= n`
     t: PartyIndex, // `1 <= t <= n`
     sid: &[u8],
     mut rng: R,
@@ -422,7 +422,7 @@ fn check_arguments(
     t: PartyIndex,
     n: PartyIndex,
 ) -> Result<(PartyIndex, PartyIndex, PartyIndex), InternalErr> {
-    if 1 <= n && (1 <= t && t <= n) && (i < n) {
+    if 2 <= n && (1 <= t && t <= n) && (i < n) {
         Ok((i, t, n))
     } else {
         Err(InternalErr::InvalidArgument("i={i}, n={n}, t={t}".into()))
