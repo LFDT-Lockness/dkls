@@ -15,7 +15,7 @@
 ## Round 1: commit
 
 Party $i$:
-- Sample $s_{i,0}, s_{i,1}, \cdots, s_{i,t-1} \leftarrow \mathbb{Z}_q^t$ as coefficients of degree-$(t-1)$ polynomial $p_i$
+- Sample $a_{i,0}, a_{i,1}, \cdots, a_{i,t-1} \leftarrow \mathbb{Z}_q^t$ as coefficients of degree-$(t-1)$ polynomial $p_i$
 - Compute $n$ subshares for $[n]$ as $p_i(1), p_i(2), \cdots, p_i(n)$
 - Compute $t$ subshare curve points for $[0, t-1]$ as $\overrightarrow{P}_i = (P_i(0), P_i(1),\cdots, P_i(t-1))$ where  $P_i(j) = p_i(j)\cdot G$
 - Broadcast commit subshare curve points:
@@ -25,7 +25,7 @@ Party $i$:
 - 2-party commit subshares
     - For $j \in [n]\setminus\{i\}$
         - With context $\mathsf{ctx}^\prime$: Committer $i$, receiver $j$, context id $\mathsf{sid}$:
-            - $(V^\prime_i, m^\prime_i, u^\prime_i) \leftarrow \text{Commit}(\mathsf{ctx}, p_i(j))$
+            - $(V^\prime_i, m^\prime_i, u^\prime_i) \leftarrow \text{Commit}(\mathsf{ctx}, p_i(j + 1))$
             - Send $(\mathsf{2Commit}, \mathsf{sid}, V^\prime_i)$ to party $j$
 
 ## Round 2: decommit
@@ -44,7 +44,7 @@ Party $i$:
 Party $i$:
 - Receive $\{h_j, m_j, u_j, m^\prime_j, u^\prime_j: j\neq i\}$ from every party $j \neq i$
     - Parse each received $m_j$ as $(P_j(0), P_j(1), \cdots, P_j(t-1))$ from party $j$
-    - Parse each received $m^\prime_j$ as $p_j(i)$ from party $j$
+    - Parse each received $m^\prime_j$ as $p_j(i+1)$ from party $j$
 - Echo agreement for broadcast commitments:
     - Abort if exists $h_j$ such that $\mathsf{EchoAgree}(h_j, h_i)$ is false: 
         - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
@@ -57,15 +57,15 @@ Party $i$:
         - Abort if 2-party commitment $\text{Verify}(\mathsf{ctx}^\prime, V^\prime_j, m^\prime_j, u^\prime_j)$ returns false
             - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
             - Go to next round
-- Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_n(k)$
-- Sum to share: $p(i) = p_1(i) + p_2(i) + \cdots + p_n(i)$
-- Compute share curve point $P_i = p(i) \cdot G$
+- Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_{n-1}(k)$
+- Sum to share: $s_i := p(i+1) = p_0(i+1) + p_1(i+1) + \cdots + p_{n-1}(i+1)$
+- Compute share curve point $P_i = s_i \cdot G$
 - Compute expected share curve point $Q$ as follows:
-    - If $i \in [t-1]$:
-        - $Q \leftarrow P(i)$
-    - Else build from lagrange $t$ curve points:
-        - Form $t$ indexes: $S = [t-1] \cup \{i\}$
-        - Compute $Q \leftarrow \lambda_i^{-1} \cdot (P(0) - (\lambda_1 \cdot P(1) + \lambda_2 \cdot P(2) + \cdots + \lambda_{t-1} P(t-1)))$ where
+    - If $i + 1 \in [t-1]$:
+        - $Q \leftarrow P(i + 1)$
+    - Else build from lagrange coefficient of $t$ curve points:
+        - Form $t$ 1-based labels corresponding: $S = [t-1] \cup \{i+1\}$
+        - Compute $Q \leftarrow \lambda_{i+1}^{-1} \cdot (P(0) - (\lambda_1 \cdot P(1) + \lambda_2 \cdot P(2) + \cdots + \lambda_{t-1} P(t-1)))$ where
             - $\lambda_k := \mathsf{lagrange}(S, k, 0) \in \mathbb{Z}_q$
             - $\mathsf{lagrange}(S, k, x) := \prod_{l\in S, l \neq k} (x-l) \cdot (k-l)^{-1} \in \mathbb{Z}_q$
 - Abort if $P_i \neq Q$
@@ -80,4 +80,4 @@ Party $i$:
     - Output $(\mathsf{Abort}, \mathsf{sid})$
     - Halt from this session $\mathsf{sid}$
 - If sent $(\mathsf{Ok}, \mathsf{sid})$ to every other party, and received $(\mathsf{Ok}, \mathsf{sid})$ from every other party:
-    - Output $(\mathsf{KeyPair}, \mathsf{sid}, P(0), p(i))$
+    - Output $(\mathsf{KeyPair}, \mathsf{sid}, P(0), s_i)$
