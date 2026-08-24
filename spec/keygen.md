@@ -1,8 +1,11 @@
 # Threshold (i.e.,  $t$-out-of-$n$) relaxed distributed key generation
 
 ## Functions
-- [Commitment](commitment.md) $\mathsf{Commit}$, $\mathsf{Verify}$
-- [Echo agreement](commitment.md) $\mathsf{EchoDigest}$, $\mathsf{EchoAgree}$
+- [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode}(\cdot)$
+- SHA-256 $H(\cdot)$
+
+## Parameters
+- Security parameter $\lambda = 128$
 
 ## Input
 
@@ -19,44 +22,46 @@ Party $i$:
 - Compute $n$ subshares for $[n]$ as $p_i(1), p_i(2), \cdots, p_i(n)$
 - Compute $t$ subshare curve points for $[0, t-1]$ as $\overrightarrow{P}_i = (P_i(0), P_i(1),\cdots, P_i(t-1))$ where  $P_i(j) = p_i(j)\cdot G$
 - Broadcast commit subshare curve points:
-    - With $\mathsf{ctx}$: Commiter $i$, receivers $[n] \setminus \{i\}$, context id $\mathsf{sid}$:
-        - Compute $(V_i, m_i, u_i) \leftarrow \text{Commit}(\mathsf{ctx}, \overrightarrow{P}_i)$
-        - Send $(\mathsf{NCommit}, \mathsf{sid}, V_i)$ to every other parties
+    - Sample nonce $u_i \leftarrow {0,1}^{2\lambda}$
+    - Let committed points be $m_i := \overrightarrow{P}_i$
+    - Compute $V_i \leftarrow H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \}))$
+    - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
     - For $j \in [n]\setminus\{i\}$
-        - With context $\mathsf{ctx}^\prime$: Committer $i$, receiver $j$, context id $\mathsf{sid}$:
-            - $(V^\prime_i, m^\prime_i, u^\prime_i) \leftarrow \text{Commit}(\mathsf{ctx}, p_i(j + 1))$
-            - Send $(\mathsf{2Commit}, \mathsf{sid}, V^\prime_i)$ to party $j$
+        - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow {0,1}^{2\lambda}$
+        - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
+        - $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \}))$
+        - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 2: decommit
 
 Party $i$:
-- Receive all broadcast commitments $\{V_j: j \neq i\}$ and 2-party commitments $\{V^\prime_j: j \neq i\}$
-- Echo for broadcast commitments:
-    - Compute echo digest $h_i = \mathsf{EchoDigest}(\mathsf{sid}, V_1, \cdots, V_n)$
-    - Send $(\mathsf{NEcho}, \mathsf{sid}, h_i)$ to every other party
-- Open for broadcast commitments and 2-party commitments
-    - Send $(\mathsf{NOpen}, \mathsf{sid}, m_i, u_i)$ to every other party
-    - Send $(\mathsf{2Open}, \mathsf{sid}, m^\prime_i, u^\prime_i)$ to party $j$
+- Receive all broadcast commitments $\{V_j: j \neq i\}$ and 2-party commitments $\{V^\prime_{j\rightarrow i}: j \neq i\}$
+- Echo and open for broadcast commitments :
+    - Compute echo digest $h_i = H(\mathsf{encode}(\{ \mathsf{commitments}: (V_1, \cdots, V_n) \}))$
+    - Send $(\mathsf{EchoDigestAndDecommitPoints}, h_i, m_i, u_i)$ to every other party
+- Open for 2-party commitments
+    - For $j \in [n]\setminus\{i\}$
+        - Send $(\mathsf{DecommitSubshare}, m^\prime_{i\rightarrow j}, u^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 3: verify
 
 Party $i$:
-- Receive $\{h_j, m_j, u_j, m^\prime_j, u^\prime_j: j\neq i\}$ from every party $j \neq i$
+- Receive $\{h_j, m_j, u_j, m^\prime_{j\rightarrow i}, u^\prime_{j\rightarrow i}: j\neq i\}$ from every party $j \neq i$
     - Parse each received $m_j$ as $(P_j(0), P_j(1), \cdots, P_j(t-1))$ from party $j$
-    - Parse each received $m^\prime_j$ as $p_j(i+1)$ from party $j$
+    - Parse each received $m^\prime_{j\rightarrow i}$ as $p_j(i+1)$ from party $j$
 - Echo agreement for broadcast commitments:
-    - Abort if exists $h_j$ such that $\mathsf{EchoAgree}(h_j, h_i)$ is false: 
-        - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
+    - Abort if exists $h_j$ such that $h_j \neq h_i$: 
+        - Send $(\mathsf{Abort})$ to every other party
         - Go to Output
 - Binding
     - For $j \in [n]\setminus \{i\}$:
-        - Abort if broadcast commitment $\text{Verify}(\mathsf{ctx}, V_j, m_j, u_j)$ returns false: 
-            - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
+        - Abort if broadcast commitment $V_j \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, m_j, \mathsf{nonce}: u_j\}))$: 
+            - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
-        - Abort if 2-party commitment $\text{Verify}(\mathsf{ctx}^\prime, V^\prime_j, m^\prime_j, u^\prime_j)$ returns false
-            - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
-            - Go to next round
+        - Abort if 2-party commitment $V^\prime_j \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, u^\prime_{j\rightarrow i})$
+            - Send $(\mathsf{Abort})$ to every other party
+            - Go to Output
 - Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_{n-1}(k)$
 - Sum to share: $s_i := p(i+1) = p_0(i+1) + p_1(i+1) + \cdots + p_{n-1}(i+1)$
 - Compute share curve point $P_i = s_i \cdot G$
@@ -69,15 +74,15 @@ Party $i$:
             - $\lambda_k := \mathsf{lagrange}(S, k, 0) \in \mathbb{Z}_q$
             - $\mathsf{lagrange}(S, k, x) := \prod_{l\in S, l \neq k} (x-l) \cdot (k-l)^{-1} \in \mathbb{Z}_q$
 - Abort if $P_i \neq Q$
-    - Send $(\mathsf{Abort}, \mathsf{sid})$ to every other party
+    - Send $(\mathsf{Abort})$ to every other party
     - Go to Output
-- Send $(\mathsf{Ok}, \mathsf{sid})$ to every other party
+- Send $(\mathsf{Ok})$ to every other party
 
 ## Output
 
 Party $i$:
-- If received $(\mathsf{Abort}, \mathsf{sid})$ from any party, or sent $(\mathsf{Abort}, \mathsf{sid})$ to any party:
-    - Output $(\mathsf{Abort}, \mathsf{sid})$
+- If received $(\mathsf{Abort})$ from any party, or sent $(\mathsf{Abort})$ to any party:
+    - Output $(\mathsf{Abort})$
     - Halt from this session $\mathsf{sid}$
-- If sent $(\mathsf{Ok}, \mathsf{sid})$ to every other party, and received $(\mathsf{Ok}, \mathsf{sid})$ from every other party:
-    - Output $(\mathsf{KeyPair}, \mathsf{sid}, P(0), s_i)$
+- If sent $(\mathsf{Ok})$ to every other party, and received $(\mathsf{Ok})$ from every other party:
+    - Output $(\mathsf{KeyPair}, P(0), s_i)$
