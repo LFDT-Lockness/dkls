@@ -202,10 +202,8 @@ where
     .map_err(Error::Round1Send)?;
 
     // Pairwise commitment to each receiver's subshare.
-    let receivers: Vec<PartyIndex> = (0..n).filter(|&j| j != i).collect();
-    let committed_subshares: Vec<CommittedSubshare<E>> = receivers
-        .iter()
-        .map(|&j| CommittedSubshare {
+    let committed_subshares: Vec<CommittedSubshare<E>> = iter_peers(i, n)
+        .map(|j| CommittedSubshare {
             sid,
             committer: i,
             receiver: j,
@@ -448,6 +446,11 @@ fn lagrange<E: Curve>(
         }
     }
     Ok(prod)
+}
+
+/// Iterate peers of i-th party. Stolen from https://github.com/LFDT-Lockness/cggmp21.git
+pub fn iter_peers(i: u16, n: u16) -> impl Iterator<Item = u16> {
+    (0..n).filter(move |x| *x != i)
 }
 
 /// Internal error
