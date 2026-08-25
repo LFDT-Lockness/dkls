@@ -43,7 +43,7 @@ pub enum Msg<E: Curve> {
     Verify(VerifyMsg),
 }
 
-/// Message from round 1
+/// Round 1 broadcast: points commitment
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
 pub struct CommitPointsMsg {
     /// Party commitment
@@ -51,7 +51,7 @@ pub struct CommitPointsMsg {
     commitment: Output<Sha256>,
 }
 
-/// Pairwise commitment message from round 1
+/// Round 1 pairwise: subshare commitment
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
 pub struct CommitSubshareMsg {
     /// Party commitment
@@ -61,8 +61,8 @@ pub struct CommitSubshareMsg {
 
 /// Round 2 broadcast: echo agreement and opening of the curve-points commitment.
 ///
-/// Carries the values needed to recompute the [`CommittedPoints`] digest.
-/// Echos agreement for all parties [`CommittedPoints`] digests.
+/// Carries the values needed to recompute the digest for committed points.
+/// Echos digest for points commitments
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
 #[serde(bound = "")] // Clears the requirement on `E: Serialize + Deserialize`
 pub struct EchoDigestAndDecommitPointsMsg<E: Curve> {
@@ -77,7 +77,7 @@ pub struct EchoDigestAndDecommitPointsMsg<E: Curve> {
 
 /// Round 2 pairwise: opening of a subshare commitment.
 ///
-/// Carries the values needed to recompute the [`CommittedSubshare`] digest.
+/// Carries the values needed to recompute the digest for committed subshares.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound = "")]
 pub struct DecommitSubshareMsg<E: Curve> {
@@ -87,7 +87,7 @@ pub struct DecommitSubshareMsg<E: Curve> {
     nonce: [u8; NONCE_BYTES],
 }
 
-/// Round 3 verify
+/// Round 3 broadcast verificiation result
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerifyMsg {
     ok: bool,
@@ -448,7 +448,7 @@ fn lagrange<E: Curve>(
     Ok(prod)
 }
 
-/// Iterate peers of i-th party. Stolen from https://github.com/LFDT-Lockness/cggmp21.git
+/// Iterate peers of i-th party. Stolen from [cggmp21](https://github.com/LFDT-Lockness/cggmp21)
 pub fn iter_peers(i: u16, n: u16) -> impl Iterator<Item = u16> {
     (0..n).filter(move |x| *x != i)
 }
