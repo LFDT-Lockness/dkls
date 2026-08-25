@@ -1,0 +1,28 @@
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+name: Publish
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  publish-dkls:
+    name: Publish dkls
+    environment: crates.io
+    runs-on: ubuntu-latest
+    if: >-
+      github.ref_type == 'tag'
+      && startsWith(github.ref_name, 'v')
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - run: cargo publish -p dkls --token ${CRATES_TOKEN}
+      env:
+        CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}

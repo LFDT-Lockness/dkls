@@ -1,0 +1,94 @@
+# Run some workflows on ubuntu 22.04 because ubuntu-latest broke some system
+# libs in late 2024
+
+name: Rust
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [ "*" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Check no-std
+      run: cargo check --locked -p dkls
+  check-all:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Check everything
+      run: cargo check --locked --all-targets
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Run tests
+      run: cargo test --locked --all-features
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Run clippy
+      run: cargo clippy --locked --all --all-features -- -D clippy::all -D clippy::unwrap_used -D clippy::expect_used
+  clippy-tests:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Run clippy tests
+      run: cargo clippy --locked --workspace --tests --all-features -- -D clippy::all
+  check-doc:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 #nightly
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae #v2
+      with:
+        cache-on-failure: "true"
+    - name: Check docs
+      run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc --locked --all-features --no-deps
+  check-semver:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - name: Check semver
+      uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 #v2
+      with:
+        package: dkls
+        feature-group: all-features
+  check-changelog:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
+    - name: Check changelogs
+      run: ./.github/changelog.sh
