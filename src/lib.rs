@@ -17,6 +17,7 @@ mod _unused_deps {
 }
 
 use alloc::{string::String, vec::Vec};
+use core::iter::once;
 use generic_ec::{Curve, Point, Scalar, SecretScalar};
 use generic_ec_zkp::polynomial::Polynomial;
 use round_based::{
@@ -180,9 +181,11 @@ where
         .collect();
     // t points P_i(j) for j = 0, 1, ..., t - 1, where P_i(0) is for the secret, and rest for party
     // 0, ..., t - 2.
-    let subshare_curve_points: Vec<Point<E>> = (0..t)
-        .map(|j| p_i.value::<_, Scalar<E>>(&Scalar::<E>::from(j)) * Point::<E>::generator())
-        .collect();
+    let subshare_curve_points: Vec<Point<E>> =
+        once(p_i.value::<_, Scalar<E>>(&Scalar::<E>::from(0)))
+            .chain((1..t).map(|j| subshares[usize::from(j) - 1]))
+            .map(|s| s * Point::<E>::generator())
+            .collect();
 
     let mut nonce = [0u8; NONCE_BYTES];
     rng.fill_bytes(&mut nonce);
