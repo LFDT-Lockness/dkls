@@ -28,7 +28,7 @@ Party $i$:
     - Compute $V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \rbrace ))$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
-    - For $j \in [n]\setminus\lbrace i\rbrace}$
+    - For $j \in [n]\setminus\lbrace i\rbrace$
         - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \lbrace 0,1\rbrace ^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
         - Let $\mathsf{tag} := ``dkls23.keygen.committed\_subshare"$
