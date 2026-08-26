@@ -491,8 +491,7 @@ pub enum Error<RecvErr, SendErr, InternalErr> {
     InternalError(#[source] InternalErr),
 
     /// The protocol was aborted because a check failed (e.g. a decommitment
-    /// didn't match its commitment, or the echo consistency check failed). The
-    /// message carries context such as the offending party index.
+    /// didn't match its commitment, or the echo agreement check failed).
     #[error("protocol aborted: {msg}")]
     Abort {
         /// Abort message
