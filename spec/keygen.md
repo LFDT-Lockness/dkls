@@ -59,7 +59,7 @@ Party $i$:
         - Abort if broadcast commitment $V_j \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, m_j, \mathsf{nonce}: u_j\}))$: 
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
-        - Abort if 2-party commitment $V^\prime_{j\rightarrow i} \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, \mathsf{nonce}: u^\prime_{j\rightarrow i}))$
+        - Abort if 2-party commitment $V^\prime_{j\rightarrow i} \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, \mathsf{nonce}: u^\prime_{j\rightarrow i} \}))$
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
 - Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_{n-1}(k)$
