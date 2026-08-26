@@ -4,7 +4,7 @@
 - Security parameter $\lambda = 128$
 
 ## Functions
-- [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode}_{\mathsf{tag}}(\cdot) \to \lbrace 0,1 \rbrace ^*$
+- [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode_{tag}}(\cdot) \to \lbrace 0,1 \rbrace ^\ast$
 - SHA-256 $H(\cdot) \to \lbrace 0,1 \rbrace ^{2\lambda}$
 
 ## Input
@@ -24,15 +24,15 @@ Party $i$:
 - Broadcast commit subshare curve points:
     - Sample nonce $u_i \leftarrow \lbrace 0,1 \rbrace ^{2\lambda}$
     - Let committed points be $m_i := \overrightarrow{P}_i$
-    - Let $\mathsf{points} := ``dkls23.keygen.committed.points"$
-    - Compute $$V_i \leftarrow H(\mathsf{encode}_\mathsf{points}(\lbrace \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \rbrace ))$$
+    - Let tag $\mathsf{points} := \texttt{"dkls23.keygen.committed.points"}$
+    - Compute $V_i \leftarrow H(\mathsf{encode_{points}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, m_i, \mathsf{nonce}{:} u_i \rbrace ))$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
     - For $j \in [n]\setminus\lbrace i\rbrace$
         - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \lbrace 0,1\rbrace ^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
-        - Let $\mathsf{subshare} := ``dkls23.keygen.committed.subshare"$
-        - Compute $$V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{subshare}(\lbrace \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j}, \mathsf{nonce}: u^\prime_{i\rightarrow j} \rbrace))$$
+        - Let tag $\mathsf{subshare} := \texttt{"dkls23.keygen.committed.subshare"}$
+        - Compute $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode_{subshare}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, \mathsf{receiver}{:} j, m^\prime_{i\rightarrow j}, \mathsf{nonce}{:} u^\prime_{i\rightarrow j} \rbrace))$
         - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 2: decommit
@@ -40,8 +40,8 @@ Party $i$:
 Party $i$:
 - Receive all broadcast commitments $\lbrace V_j: j \neq i\rbrace$ and 2-party commitments $\lbrace V^\prime_{j\rightarrow i}: j \neq i\rbrace$
 - Echo and open for broadcast commitments :
-    - Let $\mathsf{tag} := ``dkls23.keygen.echo.commitments"$
-    - Compute echo digest $h_i = H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{commitments}: (V_1, \cdots, V_n) \rbrace))$
+    - Let tag $\mathsf{echo} := \texttt{"dkls23.keygen.echo.commitments"}$
+    - Compute echo digest $h_i = H(\mathsf{encode_{echo}}(\lbrace \mathsf{commitments}: (V_1, \cdots, V_n) \rbrace))$
     - Send $(\mathsf{EchoDigestAndDecommitPoints}, h_i, m_i, u_i)$ to every other party
 - Open for 2-party commitments
     - For $j \in [n]\setminus\lbrace i\rbrace$
@@ -59,10 +59,10 @@ Party $i$:
         - Go to Output
 - Binding
     - For $j \in [n]\setminus \lbrace i\rbrace$:
-        - Abort if broadcast commitment $$V_j \neq H(\mathsf{encode}_\mathsf{points}(\lbrace \mathsf{sid}, \mathsf{committer}: j, m_j, \mathsf{nonce}: u_j\rbrace))$$
+        - Abort if broadcast commitment $V_j \neq H(\mathsf{encode_{points}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} j, m_j, \mathsf{nonce}{:} u_j\rbrace))$
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
-        - Abort if 2-party commitment $$V^\prime_{j\rightarrow i} \neq H(\mathsf{encode}_\mathsf{subshare}(\lbrace \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, \mathsf{nonce}: u^\prime_{j\rightarrow i} \rbrace))$$
+        - Abort if 2-party commitment $V^\prime_{j\rightarrow i} \neq H(\mathsf{encode_{subshare}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} j, \mathsf{receiver}{:} i, m^\prime_{j\rightarrow i}, \mathsf{nonce}{:} u'_{j\rightarrow i} \rbrace))$
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
 - Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_{n-1}(k)$
