@@ -469,7 +469,7 @@ pub enum InternalErr {
 
 /// Protocol error
 #[derive(Debug, thiserror::Error)]
-pub enum Error<RecvErr, SendErr, InternalErr> {
+pub enum Error<RecvErr, SendErr> {
     /// Couldn't send a message in the first round
     #[error("send a message at round 1")]
     Round1Send(#[source] SendErr),
@@ -506,10 +506,9 @@ pub enum Error<RecvErr, SendErr, InternalErr> {
 pub type ErrorM<M> = Error<
     round_based::mpc::CompleteRoundErr<M, round_based::round::RoundInputError>,
     <M as Mpc>::SendErr,
-    InternalErr,
 >;
 
-impl<RecvErr, SendErr> From<InternalErr> for Error<RecvErr, SendErr, InternalErr> {
+impl<RecvErr, SendErr> From<InternalErr> for Error<RecvErr, SendErr> {
     fn from(e: InternalErr) -> Self {
         Error::InternalError(e)
     }
