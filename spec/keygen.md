@@ -1,4 +1,4 @@
-# Threshold (i.e.,  $t$-out-of-$n$) relaxed distributed key generation
+# Threshold (i.e.,  t-out-of-n) relaxed distributed key generation
 
 ## Functions
 - [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode}(\cdot)$
