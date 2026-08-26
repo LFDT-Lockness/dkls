@@ -142,12 +142,12 @@ pub struct KeyShare<E: Curve> {
 
 /// Carries out the key generation protocol
 pub async fn relaxed_key_generation<R, M, E>(
-    mut mpc: M,
-    i: PartyIndex, // Party 0, 1, ..., n - 1
-    n: PartyIndex, // `2 <= n`
-    t: PartyIndex, // `1 <= t <= n`
-    sid: &[u8],
     mut rng: R,
+    i: PartyIndex, // Party 0, 1, ..., n - 1
+    t: PartyIndex, // `1 <= t <= n`
+    n: PartyIndex, // `2 <= n`
+    mut mpc: M,
+    sid: &[u8],
 ) -> Result<KeyShare<E>, ErrorM<M>>
 where
     M: Mpc<Msg = Msg<E>>,
@@ -588,7 +588,7 @@ mod tests {
 
         let key_shares = round_based::sim::run_with_setup(
             core::iter::repeat_with(|| rng.fork()).take(n.into()),
-            |i, party, rng| relaxed_key_generation::<_, _, Secp256k1>(party, i, n, t, SID, rng),
+            |i, party, rng| relaxed_key_generation::<_, _, Secp256k1>(rng, i, t, n, party, SID),
         )
         .unwrap()
         .expect_ok()
@@ -602,10 +602,5 @@ mod tests {
         for &(t, n) in CASES {
             keygen_works(t, n);
         }
-    }
-
-    #[tokio::test]
-    async fn simulation_async() {
-        keygen_works(3, 5);
     }
 }

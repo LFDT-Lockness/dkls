@@ -22,4 +22,3 @@ generic-ec = { version = "0.5.2", default-features = false, features = ["curve-s
 rand = "0.8" # Compatible with its dependency `rand_core` https://crates.io/crates/rand/0.8.0/dependencies
 rand_dev = "0.1"
 round-based = { version = "0.5.0-alpha.1", features = ["derive", "sim", "sim-async", "state-machine"]  }
-tokio = { version = "1.15", features = ["macros", "rt"] }
