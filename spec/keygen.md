@@ -25,14 +25,14 @@ Party $i$:
     - Sample nonce $u_i \leftarrow \lbrace 0,1 \rbrace ^{2\lambda}$
     - Let committed points be $m_i := \overrightarrow{P}_i$
     - Let tag $\mathsf{points} := \texttt{"dkls23.keygen.committed.points"}$
-    - Compute $V_i \leftarrow H(\mathsf{encode_{points}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, m_i, \mathsf{nonce}{:} u_i \rbrace ))$
+    - Compute $V_i = H(\mathsf{encode_{points}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, m_i, \mathsf{nonce}{:} u_i \rbrace ))$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
     - For $j \in [n]\setminus\lbrace i\rbrace$
         - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \lbrace 0,1\rbrace ^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
         - Let tag $\mathsf{subshare} := \texttt{"dkls23.keygen.committed.subshare"}$
-        - Compute $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode_{subshare}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, \mathsf{receiver}{:} j, m^\prime_{i\rightarrow j}, \mathsf{nonce}{:} u^\prime_{i\rightarrow j} \rbrace))$
+        - Compute $V^\prime_{i\rightarrow j} = H(\mathsf{encode_{subshare}}(\lbrace \mathsf{sid}, \mathsf{committer}{:} i, \mathsf{receiver}{:} j, m^\prime_{i\rightarrow j}, \mathsf{nonce}{:} u^\prime_{i\rightarrow j} \rbrace))$
         - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 2: decommit
@@ -70,10 +70,10 @@ Party $i$:
 - Compute share curve point $P_i = s_i \cdot G$
 - Compute expected share curve point $Q$ as follows:
     - If $i + 1 \in [t-1]$:
-        - $Q \leftarrow P(i + 1)$
+        - $Q = P(i + 1)$
     - Else build from lagrange coefficient of $t$ curve points:
         - Form $t$ 1-based labels corresponding: $S = [t-1] \cup \lbrace i+1\rbrace$
-        - Compute $Q \leftarrow \lambda_{i+1}^{-1} \cdot (P(0) - (\lambda_1 \cdot P(1) + \lambda_2 \cdot P(2) + \cdots + \lambda_{t-1} P(t-1)))$ where
+        - Compute $Q = \lambda_{i+1}^{-1} \cdot (P(0) - (\lambda_1 \cdot P(1) + \lambda_2 \cdot P(2) + \cdots + \lambda_{t-1} P(t-1)))$ where
             - $\lambda_k := \mathsf{lagrange}(S, k, 0) \in \mathbb{Z}_q$
             - $\mathsf{lagrange}(S, k, x) := \prod_{l\in S, l \neq k} (x-l) \cdot (k-l)^{-1} \in \mathbb{Z}_q$
 - Abort if $P_i \neq Q$
