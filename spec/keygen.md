@@ -25,14 +25,14 @@ Party $i$:
     - Sample nonce $u_i \leftarrow \lbrace 0,1 \rbrace ^{2\lambda}$
     - Let committed points be $m_i := \overrightarrow{P}_i$
     - Let $\mathsf{tag} := ``dkls23.keygen.committed.points"$
-    - Compute $V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \rbrace ))$
+    - Compute $$V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \rbrace ))$$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
     - For $j \in [n]\setminus\lbrace i\rbrace$
         - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \lbrace 0,1\rbrace ^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
         - Let $\mathsf{tag} := ``dkls23.keygen.committed.subshare"$
-        - $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \rbrace ))$
+        - Compute $$V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \rbrace ))$$
         - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 2: decommit
