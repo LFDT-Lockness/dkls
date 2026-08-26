@@ -4,8 +4,8 @@
 - Security parameter $\lambda = 128$
 
 ## Functions
-- [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode}_{\mathsf{tag}}(\cdot) \to \{0,1\}^*$
-- SHA-256 $H(\cdot) \to \{0,1\}^{2\lambda}$
+- [Unambiguous encoding](https://docs.rs/udigest/latest/udigest/encoding/index.html): $\mathsf{encode}_{\mathsf{tag}}(\cdot) \to \lbrace 0,1 \rbrace ^*$
+- SHA-256 $H(\cdot) \to \lbrace 0,1 \rbrace ^{2\lambda}$
 
 ## Input
 
@@ -22,35 +22,35 @@ Party $i$:
 - Compute $n$ subshares for $[n]$ as $p_i(1), p_i(2), \cdots, p_i(n)$
 - Compute $t$ subshare curve points for $[0, t-1]$ as $\overrightarrow{P}_i = (P_i(0), P_i(1),\cdots, P_i(t-1))$ where  $P_i(j) = p_i(j)\cdot G$
 - Broadcast commit subshare curve points:
-    - Sample nonce $u_i \leftarrow \{0,1\}^{2\lambda}$
+    - Sample nonce $u_i \leftarrow \lbrace 0,1 \rbrace ^{2\lambda}$
     - Let committed points be $m_i := \overrightarrow{P}_i$
-    - Let $\mathsf{tag} := $ "dkls23.keygen.committed\_points"
-    - Compute $V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \}))$
+    - Let $\mathsf{tag} := ``dkls23.keygen.committed\_points"$
+    - Compute $V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \rbrace ))$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
-    - For $j \in [n]\setminus\{i\}$
-        - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \{0,1\}^{2\lambda}$
+    - For $j \in [n]\setminus\lbrace i\rbrace}$
+        - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \lbrace 0,1\rbrace ^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
-        - Let $\mathsf{tag} := $ "dkls23.keygen.committed\_subshare"
-        - $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \}))$
+        - Let $\mathsf{tag} := ``dkls23.keygen.committed\_subshare"$
+        - $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \rbrace ))$
         - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 2: decommit
 
 Party $i$:
-- Receive all broadcast commitments $\{V_j: j \neq i\}$ and 2-party commitments $\{V^\prime_{j\rightarrow i}: j \neq i\}$
+- Receive all broadcast commitments $\lbrace V_j: j \neq i\rbrace$ and 2-party commitments $\lbrace V^\prime_{j\rightarrow i}: j \neq i\rbrace$
 - Echo and open for broadcast commitments :
-    - Let $\mathsf{tag} := $ "dkls23.keygen.echo\_commitments"
-    - Compute echo digest $h_i = H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{commitments}: (V_1, \cdots, V_n) \}))$
+    - Let $\mathsf{tag} := ``dkls23.keygen.echo\_commitments"$
+    - Compute echo digest $h_i = H(\mathsf{encode}_\mathsf{tag}(\lbrace \mathsf{commitments}: (V_1, \cdots, V_n) \rbrace))$
     - Send $(\mathsf{EchoDigestAndDecommitPoints}, h_i, m_i, u_i)$ to every other party
 - Open for 2-party commitments
-    - For $j \in [n]\setminus\{i\}$
+    - For $j \in [n]\setminus\lbrace i\rbrace$
         - Send $(\mathsf{DecommitSubshare}, m^\prime_{i\rightarrow j}, u^\prime_{i\rightarrow j})$ to party $j$
 
 ## Round 3: verify
 
 Party $i$:
-- Receive $\{h_j, m_j, u_j, m^\prime_{j\rightarrow i}, u^\prime_{j\rightarrow i}: j\neq i\}$ from every party $j \neq i$
+- Receive $\lbrace h_j, m_j, u_j, m^\prime_{j\rightarrow i}, u^\prime_{j\rightarrow i}: j\neq i\rbrace$ from every party $j \neq i$
     - Parse each received $m_j$ as $(P_j(0), P_j(1), \cdots, P_j(t-1))$ from party $j$
     - Parse each received $m^\prime_{j\rightarrow i}$ as $p_j(i+1)$ from party $j$
 - Echo agreement for broadcast commitments:
@@ -58,11 +58,11 @@ Party $i$:
         - Send $(\mathsf{Abort})$ to every other party
         - Go to Output
 - Binding
-    - For $j \in [n]\setminus \{i\}$:
-        - Abort if broadcast commitment $V_j \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, m_j, \mathsf{nonce}: u_j\}))$: 
+    - For $j \in [n]\setminus \lbrace i\rbrace$:
+        - Abort if broadcast commitment $V_j \neq H(\mathsf{encode}(\lbrace \mathsf{sid}, \mathsf{committer}: j, m_j, \mathsf{nonce}: u_j\rbrace))$: 
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
-        - Abort if 2-party commitment $V^\prime_{j\rightarrow i} \neq H(\mathsf{encode}(\{ \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, \mathsf{nonce}: u^\prime_{j\rightarrow i} \}))$
+        - Abort if 2-party commitment $V^\prime_{j\rightarrow i} \neq H(\mathsf{encode}(\lbrace \mathsf{sid}, \mathsf{committer}: j, \mathsf{receiver}: i, m^\prime_{j\rightarrow i}, \mathsf{nonce}: u^\prime_{j\rightarrow i} \rbrace))$
             - Send $(\mathsf{Abort})$ to every other party
             - Go to Output
 - Sum to $t$ share curve points for $k \in [0, t-1]$: $P(k) = P_0(k) + P_1(k) + \cdots P_{n-1}(k)$
@@ -72,7 +72,7 @@ Party $i$:
     - If $i + 1 \in [t-1]$:
         - $Q \leftarrow P(i + 1)$
     - Else build from lagrange coefficient of $t$ curve points:
-        - Form $t$ 1-based labels corresponding: $S = [t-1] \cup \{i+1\}$
+        - Form $t$ 1-based labels corresponding: $S = [t-1] \cup \lbrace i+1\rbrace$
         - Compute $Q \leftarrow \lambda_{i+1}^{-1} \cdot (P(0) - (\lambda_1 \cdot P(1) + \lambda_2 \cdot P(2) + \cdots + \lambda_{t-1} P(t-1)))$ where
             - $\lambda_k := \mathsf{lagrange}(S, k, 0) \in \mathbb{Z}_q$
             - $\mathsf{lagrange}(S, k, x) := \prod_{l\in S, l \neq k} (x-l) \cdot (k-l)^{-1} \in \mathbb{Z}_q$
