@@ -24,14 +24,14 @@ Party $i$:
 - Broadcast commit subshare curve points:
     - Sample nonce $u_i \leftarrow \{0,1\}^{2\lambda}$
     - Let committed points be $m_i := \overrightarrow{P}_i$
-    - Let tag be $\mathsf{tag} := \text{``dkls23.keygen.committed\textunderscore points"}$
+    - Let $\mathsf{tag} := $ "dkls23.keygen.committed\_points"
     - Compute $V_i \leftarrow H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{sid}, \mathsf{committer}: i, m_i, \mathsf{nonce}: u_i \}))$
     - Send $(\mathsf{CommitPoints}, V_i)$ to every other parties
 - 2-party commit subshares
     - For $j \in [n]\setminus\{i\}$
         - Sample nonce $u^\prime_{i\rightarrow j} \leftarrow \{0,1\}^{2\lambda}$
         - Let committed subshare be $m^\prime_{i\rightarrow j} := p_i(j + 1)$
-        - Let tag be $\mathsf{tag} := \text{``dkls23.keygen.committed\textunderscore subshare"}$
+        - Let $\mathsf{tag} := $ "dkls23.keygen.committed\_subshare"
         - $V^\prime_{i\rightarrow j} \leftarrow H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{sid}, \mathsf{committer}: i, \mathsf{receiver}: j, m^\prime_{i\rightarrow j} , \mathsf{nonce}: u^\prime_{i\rightarrow j} \}))$
         - Send $(\mathsf{CommitSubshare}, V^\prime_{i\rightarrow j})$ to party $j$
 
@@ -40,7 +40,7 @@ Party $i$:
 Party $i$:
 - Receive all broadcast commitments $\{V_j: j \neq i\}$ and 2-party commitments $\{V^\prime_{j\rightarrow i}: j \neq i\}$
 - Echo and open for broadcast commitments :
-    - Let tag be $\mathsf{tag} := \text{``dkls23.keygen.echo\textunderscore commitments"}$
+    - Let $\mathsf{tag} := $ "dkls23.keygen.echo\_commitments"
     - Compute echo digest $h_i = H(\mathsf{encode}_\mathsf{tag}(\{ \mathsf{commitments}: (V_1, \cdots, V_n) \}))$
     - Send $(\mathsf{EchoDigestAndDecommitPoints}, h_i, m_i, u_i)$ to every other party
 - Open for 2-party commitments
