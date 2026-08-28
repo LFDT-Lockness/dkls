@@ -2,14 +2,17 @@
 
 ## Parameters
 
-- Security parametr $\lambda$
-- Ouput length $\ell$
-- Curve $\mathbb{E}$ with generator $G$ of prime order $q$
+As in DKLs:
+- Security parametr $\lambda = 128$
+- Ouput length $\ell = \lambda$ (length of OT string to seed OT extension's PRG)
+- Curve $\mathbb{E}$ with generator $G$ of prime order $q$ with $\log_2(q) \ge 2\lambda$
 
 ## Functions
 
-- Random oracle for a uniform point: $H: \langle G \rangle \to \langle G \rangle$
+- Random oracle for a point of unknown log: $H: \langle G \rangle \to \langle G \rangle$
+    - Instantiated by hashing to curve RFC 9380
 - Random oracle: $H': \langle G \rangle \to \lbrace 0,1 \rbrace^\ell$
+    - Instantiated by $\mathsf{SHA256}(\mathsf{encode}(\cdot))$ truncated to $\ell$ bits, where $\mathsf{encode}(\cdot): \langle G \rangle \to \lbrace 0,1 \rbrace^\ast$ encodes a curve point according to its coordinates
 
 ## Input
 
@@ -18,7 +21,7 @@
 - Sender:
 
 - Common:
-    - Context id $\mathsf{sid}$
+    - Session id $\mathsf{sid}$
 
 ## Round 1
 
