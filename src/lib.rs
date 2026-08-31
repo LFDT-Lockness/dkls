@@ -20,6 +20,7 @@ use alloc::{string::String, vec::Vec};
 use core::iter::once;
 use generic_ec::{Curve, Point, Scalar, SecretScalar};
 use generic_ec_zkp::polynomial::Polynomial;
+use rand_core::{RngCore, CryptoRng};
 use round_based::{
     PartyIndex, ProtocolMsg,
     mpc::{Mpc, MpcExecution},
@@ -45,18 +46,16 @@ pub enum Msg<E: Curve> {
 }
 
 /// Round 1 broadcast: points commitment
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitPointsMsg {
     /// Party commitment
-    #[udigest(as_bytes)]
     commitment: Output<Sha256>,
 }
 
 /// Round 1 pairwise: subshare commitment
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitSubshareMsg {
     /// Party commitment
-    #[udigest(as_bytes)]
     commitment: Output<Sha256>,
 }
 
@@ -64,11 +63,10 @@ pub struct CommitSubshareMsg {
 ///
 /// Carries the values needed to recompute the digest for committed points.
 /// Echos digest for points commitments
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Digestable)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound = "")] // Clears the requirement on `E: Serialize + Deserialize`
 pub struct EchoDigestAndDecommitPointsMsg<E: Curve> {
     /// Party commitments as digest
-    #[udigest(as_bytes)]
     digest: Output<Sha256>,
     /// The committed vector of curve points
     points: Vec<Point<E>>,
@@ -144,7 +142,7 @@ pub struct KeyShare<E: Curve> {
 /// Carries out the key generation protocol
 pub async fn relaxed_key_generation<R, M, E>(
     mut rng: R,
-    i: PartyIndex, // Party 0, 1, ..., n - 1
+    i: PartyIndex, // Party `0, 1, ..., n - 1`
     t: PartyIndex, // `1 <= t <= n`
     n: PartyIndex, // `2 <= n`
     mut mpc: M,
@@ -152,8 +150,8 @@ pub async fn relaxed_key_generation<R, M, E>(
 ) -> Result<KeyShare<E>, ErrorM<M>>
 where
     M: Mpc<Msg = Msg<E>>,
-    R: rand_core::RngCore,
-    E: generic_ec::Curve,
+    R: RngCore + CryptoRng,
+    E: Curve,
 {
     let (i, t, n) = check_arguments(i, t, n)?;
     let me = i + 1; // 1-based party label for 0-based party index, for indexing curve points
@@ -175,12 +173,12 @@ where
 
     // 1. Generate local randomness
     let p_i = Polynomial::<SecretScalar<E>>::sample(&mut rng, usize::from(t) - 1);
-    // n subshares p_i(j) for j = 1, 2, ..., n for party 0, 1, ..., n - 1
+    // `n` subshares `p_i(j)` for `j = 1, 2, ..., n` for party index `0, 1, ..., n - 1`
     let subshares: Vec<Scalar<E>> = (1..=n)
         .map(|j| p_i.value::<_, Scalar<E>>(&Scalar::<E>::from(j)))
         .collect();
-    // t points P_i(j) for j = 0, 1, ..., t - 1, where P_i(0) is for the secret, and rest for party
-    // 0, ..., t - 2.
+    // `t` points `P_i(j)` for `j = 0, 1, ..., t - 1`, where `P_i(0)` is for the secret, and rest for party
+    // index `0, ..., t - 2`.
     let subshare_curve_points: Vec<Point<E>> =
         once(p_i.value::<_, Scalar<E>>(&Scalar::<E>::from(0)))
             .chain((1..t).map(|j| subshares[usize::from(j) - 1]))
@@ -245,7 +243,7 @@ where
         .iter()
         .map(|c| c.commitment)
         .collect();
-    // Rebuild the full n-length commitment vector in absolute party order for the echo digest.
+    // Rebuild the full `n`-length commitment vector in absolute party order for the echo digest.
     let all_points_commitments = [
         &other_points_commitments[0..i as usize],
         &[points_commitment],
@@ -365,7 +363,7 @@ where
         let expected_share_curve_point: Point<E> = if me < t {
             share_points[me as usize]
         } else {
-            // Build from lagrange t curve points. Take care to use 1-based party label
+            // Build from lagrange `t` curve points. Take care to use 1-based party label
             let label_set: Vec<Scalar<E>> =
                 (1..=t - 1).chain([me]).map(Scalar::<E>::from).collect();
             let l_me_inv = l0(&label_set, Scalar::<E>::from(me))?
@@ -521,6 +519,7 @@ mod tests {
     use generic_ec::{Curve, Point, Scalar, curves::Secp256k1};
     use generic_ec_zkp::polynomial::lagrange_coefficient;
     use rand::seq::SliceRandom;
+    use rand_core::{RngCore, CryptoRng};
 
     const SID: &[u8] = b"test-session";
 
@@ -531,8 +530,8 @@ mod tests {
     const CASES: &[(u16, u16)] = &[(2, 2), (2, 3), (3, 3), (3, 5), (5, 5)];
 
     /// Interpolates the secret-sharing polynomial through `polynomial_points` evaluated at `x`,
-    /// where x is not an coordinate of one of the points.
-    /// The `polynomial_points` are (1-based label, share) pairs.
+    /// where `x` is not an coordinate of one of the points.
+    /// The `polynomial_points` are (1-based party label, share) pairs.
     fn interpolate_at<E: Curve>(polynomial_points: &[(u16, Scalar<E>)], x: Scalar<E>) -> Scalar<E> {
         let xs: Vec<Scalar<E>> = polynomial_points
             .iter()
@@ -550,14 +549,16 @@ mod tests {
     }
 
     /// Validates a threshold keygen output:
-    /// - every party agrees on the shared public key `P(0)` and the session id
-    /// - all `n` shares lie on one degree-`(t-1)` polynomial.
-    fn validate<E: Curve>(
+    /// - every party agrees on the shared public key P(0) and the session id.
+    /// - all n shares lie on one degree-(t-1) polynomial.
+    fn validate<E: Curve, R>(
+        rng: &mut R,
         t: u16,
         n: u16,
         key_shares: &[KeyShare<E>],
-        rng: &mut impl rand::RngCore,
-    ) {
+    ) where 
+        R: RngCore + CryptoRng,
+    {
         assert_eq!(key_shares.len(), usize::from(n));
 
         let public_key = key_shares[0].share_point_0;
@@ -565,19 +566,19 @@ mod tests {
             assert_eq!(share.share_point_0, public_key);
         }
 
-        // The party at 0-based position `k` holds the share at evaluation point `k + 1` (the 1-based party label).
+        // The party at 0-based index `i` holds the share at evaluation point `i + 1` (the 1-based party label).
         let all: Vec<(u16, Scalar<E>)> = (1..=n)
-            .zip(key_shares.iter().map(|ks| ks.share_i))
+            .zip(key_shares.iter().map(|k| k.share_i))
             .collect();
         let subset: Vec<(u16, Scalar<E>)> =
             all.choose_multiple(rng, usize::from(t)).copied().collect();
 
-        // The polynomial through the random `t`-subset must reproduce every other party's share
-        for (label, share) in &all {
-            if subset.iter().any(|(l, _)| l == label) {
+        // The polynomial through the random `t`-subset must reproduce every other party's share.
+        for (label, share) in all {
+            if subset.iter().any(|(l, _)| *l == label) {
                 continue;
             }
-            assert_eq!(interpolate_at(&subset, Scalar::from(*label)), *share);
+            assert_eq!(interpolate_at(&subset, Scalar::from(label)), share);
         }
 
         // Constant term `p(0)` is the secret behind the public key.
@@ -596,7 +597,7 @@ mod tests {
         .expect_ok()
         .into_vec();
 
-        validate(t, n, &key_shares, &mut rng);
+        validate(&mut rng, t, n, &key_shares);
     }
 
     #[test]
