@@ -125,11 +125,6 @@ struct EchoCommitments<'a> {
     commitments: &'a [Output<Sha256>],
 }
 
-enum Verification<E: Curve> {
-    Abort,
-    Success(KeyShare<E>),
-}
-
 /// Key share output from the protocol
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct KeyShare<E: Curve> {
@@ -293,13 +288,7 @@ where
         .iter()
         .any(|m| m.digest != echo_digest)
     {
-        // Send abort
-        let verify = VerifyMsg { ok: false };
-        mpc.send_to_all(Msg::Verify(verify))
-            .await
-            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
-        // Go to output
-        Verification::Abort
+        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
     } else if received_echo_digests_and_decommit_points
         .iter_indexed()
         .zip(received_points_commitments.iter_indexed())
@@ -313,13 +302,7 @@ where
             c.commitment != hash::<Sha256>(&committed_points)
         })
     {
-        // Send abort
-        let verify = VerifyMsg { ok: false };
-        mpc.send_to_all(Msg::Verify(verify))
-            .await
-            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
-        // Go to output
-        Verification::Abort
+        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
     } else if received_decommit_subshares
         .iter_indexed()
         .zip(received_subshare_commitments.iter_indexed())
@@ -334,13 +317,7 @@ where
             c.commitment != hash::<Sha256>(&committed_subshare)
         })
     {
-        // Send abort
-        let verify = VerifyMsg { ok: false };
-        mpc.send_to_all(Msg::Verify(verify))
-            .await
-            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
-        // Go to output
-        Verification::Abort
+        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
     } else {
         // Verify expected share curve point
         let share_points: Vec<Point<E>> = (0..t)
@@ -377,21 +354,14 @@ where
         };
 
         if share_curve_point != expected_share_curve_point {
-            // Send abort
-            let verify = VerifyMsg { ok: false };
-            mpc.send_to_all(Msg::Verify(verify))
-                .await
-                .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
-            // Go to output
-            Verification::Abort
+            Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
         } else {
             // Send ok
             let verify = VerifyMsg { ok: true };
             mpc.send_to_all(Msg::Verify(verify))
                 .await
                 .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
-            // Go to output
-            Verification::Success(KeyShare {
+            Ok(KeyShare {
                 share_point_0: share_points[0],
                 share_i: share,
             })
@@ -407,11 +377,7 @@ where
     if received_verifications.iter().any(|v| !v.ok) {
         Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
     } else {
-        match verification {
-            Verification::Abort => Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
-,
-            Verification::Success(key_share) => Ok(key_share),
-        }
+        verification
     }
 }
 
