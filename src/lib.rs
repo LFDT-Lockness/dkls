@@ -126,7 +126,7 @@ struct EchoCommitments<'a> {
 }
 
 enum Verification<E: Curve> {
-    Abort(String),
+    Abort,
     Success(KeyShare<E>),
 }
 
@@ -147,7 +147,7 @@ pub async fn relaxed_key_generation<R, M, E>(
     n: PartyIndex, // `2 <= n`
     mut mpc: M,
     sid: &[u8],
-) -> Result<KeyShare<E>, ErrorM<M>>
+) -> Result<KeyShare<E>, KeygenError>
 where
     M: Mpc<Msg = Msg<E>>,
     R: RngCore + CryptoRng,
@@ -200,7 +200,7 @@ where
         commitment: points_commitment,
     }))
     .await
-    .map_err(Error::Round1Send)?;
+    .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
 
     // Pairwise commitment to each receiver's subshare.
     let committed_subshares: Vec<CommittedSubshare<E>> = iter_peers(i, n)
@@ -225,17 +225,17 @@ where
             }),
         )
         .await
-        .map_err(Error::Round1Send)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
     }
 
     let received_points_commitments = mpc
         .complete(round1_commit_points)
         .await
-        .map_err(Error::Round1Receive)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::ReceiveError)))?;
     let received_subshare_commitments = mpc
         .complete(round1_commit_subshares)
         .await
-        .map_err(Error::Round1Receive)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::ReceiveError)))?;
 
     // 2. decomit
     // Echo for broadcast points commitments
@@ -264,7 +264,7 @@ where
         },
     ))
     .await
-    .map_err(Error::Round2Send)?;
+    .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
 
     for committed_subshare in &committed_subshares {
         mpc.send_p2p(
@@ -275,17 +275,17 @@ where
             }),
         )
         .await
-        .map_err(Error::Round2Send)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
     }
 
     let received_echo_digests_and_decommit_points = mpc
         .complete(round2_echo_digest_and_decommit_points)
         .await
-        .map_err(Error::Round2Receive)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::ReceiveError)))?;
     let received_decommit_subshares = mpc
         .complete(round2_decommit_subshares)
         .await
-        .map_err(Error::Round2Receive)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::ReceiveError)))?;
 
     // 3. Verify
     // Echo agreement
@@ -297,9 +297,9 @@ where
         let verify = VerifyMsg { ok: false };
         mpc.send_to_all(Msg::Verify(verify))
             .await
-            .map_err(Error::Round3Send)?;
+            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
         // Go to output
-        Verification::Abort("echo agreement".into())
+        Verification::Abort
     } else if received_echo_digests_and_decommit_points
         .iter_indexed()
         .zip(received_points_commitments.iter_indexed())
@@ -317,9 +317,9 @@ where
         let verify = VerifyMsg { ok: false };
         mpc.send_to_all(Msg::Verify(verify))
             .await
-            .map_err(Error::Round3Send)?;
+            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
         // Go to output
-        Verification::Abort("points commitment".into())
+        Verification::Abort
     } else if received_decommit_subshares
         .iter_indexed()
         .zip(received_subshare_commitments.iter_indexed())
@@ -338,9 +338,9 @@ where
         let verify = VerifyMsg { ok: false };
         mpc.send_to_all(Msg::Verify(verify))
             .await
-            .map_err(Error::Round3Send)?;
+            .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
         // Go to output
-        Verification::Abort("subshare commitment".into())
+        Verification::Abort
     } else {
         // Verify expected share curve point
         let share_points: Vec<Point<E>> = (0..t)
@@ -368,7 +368,7 @@ where
                 (1..=t - 1).chain([me]).map(Scalar::<E>::from).collect();
             let l_me_inv = l0(&label_set, Scalar::<E>::from(me))?
                 .invert()
-                .ok_or(InternalErr::ArithmeticError("l_me invert".into()))?;
+                .ok_or(KeygenError(Reason::Bug(Bug::ArithmeticError)))?;
             let mut acc = l0(&label_set, Scalar::<E>::from(1))? * share_points[1];
             for k in 2..=t - 1 {
                 acc += l0(&label_set, Scalar::<E>::from(k))? * share_points[k as usize];
@@ -381,15 +381,15 @@ where
             let verify = VerifyMsg { ok: false };
             mpc.send_to_all(Msg::Verify(verify))
                 .await
-                .map_err(Error::Round3Send)?;
+                .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
             // Go to output
-            Verification::Abort("expected share point".into())
+            Verification::Abort
         } else {
             // Send ok
             let verify = VerifyMsg { ok: true };
             mpc.send_to_all(Msg::Verify(verify))
                 .await
-                .map_err(Error::Round3Send)?;
+                .map_err(|_| KeygenError(Reason::IoError(IoError::SendError)))?;
             // Go to output
             Verification::Success(KeyShare {
                 share_point_0: share_points[0],
@@ -401,16 +401,15 @@ where
     let received_verifications = mpc
         .complete(round3_verify)
         .await
-        .map_err(Error::Round3Receive)?;
+        .map_err(|_| KeygenError(Reason::IoError(IoError::ReceiveError)))?;
 
     // Output
     if received_verifications.iter().any(|v| !v.ok) {
-        Err(Error::Abort {
-            msg: "received abort".into(),
-        })
+        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
     } else {
         match verification {
-            Verification::Abort(msg) => Err(Error::Abort { msg }),
+            Verification::Abort => Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+,
             Verification::Success(key_share) => Ok(key_share),
         }
     }
@@ -420,15 +419,15 @@ fn check_arguments(
     i: PartyIndex,
     t: PartyIndex,
     n: PartyIndex,
-) -> Result<(PartyIndex, PartyIndex, PartyIndex), InternalErr> {
+) -> Result<(PartyIndex, PartyIndex, PartyIndex), KeygenError> {
     if 2 <= n && (1 <= t && t <= n) && (i < n) {
         Ok((i, t, n))
     } else {
-        Err(InternalErr::InvalidArgument("i={i}, n={n}, t={t}".into()))
+        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::InvalidArgument)))
     }
 }
 
-fn l0<E: Curve>(s: &[Scalar<E>], k: Scalar<E>) -> Result<Scalar<E>, InternalErr> {
+fn l0<E: Curve>(s: &[Scalar<E>], k: Scalar<E>) -> Result<Scalar<E>, KeygenError> {
     lagrange(s, k, Scalar::<E>::zero())
 }
 
@@ -436,14 +435,14 @@ fn lagrange<E: Curve>(
     s: &[Scalar<E>],
     k: Scalar<E>,
     x: Scalar<E>,
-) -> Result<Scalar<E>, InternalErr> {
+) -> Result<Scalar<E>, KeygenError> {
     let mut prod = Scalar::<E>::one();
     for &l in s {
         if l != k {
             prod *= (x - l)
                 * (k - l)
                     .invert()
-                    .ok_or(InternalErr::ArithmeticError("lagrange invert".into()))?;
+                    .ok_or(KeygenError(Reason::Bug(Bug::ArithmeticError)))?;
         }
     }
     Ok(prod)
@@ -463,6 +462,55 @@ pub enum InternalErr {
     /// Arithmetic error
     #[error("arithmetic error at: {0}")]
     ArithmeticError(String),
+}
+
+/// Key generation protocol error
+#[derive(Debug, thiserror::Error)]
+#[error("Key generation protocol error")]
+pub struct KeygenError(#[source] Reason);
+
+/// Error reasons
+#[derive(Debug, thiserror::Error)]
+enum Reason {
+    /// Key generation abort
+    #[error("Key generation abort")]
+    KeygenAbort(#[source] KeygenAbort),
+    /// I/O error
+    #[error("I/O error")]
+    IoError(#[source] IoError),
+    /// Bug
+    #[error("Bug")]
+    Bug(#[source] Bug),
+}
+
+/// Key generation abort
+#[derive(Debug, thiserror::Error)]
+enum KeygenAbort {
+    /// Invalid argument
+    #[error("invalid argument")]
+    InvalidArgument,
+    /// Verification failure
+    #[error("verification failure")]
+    VerificationFailure,
+}
+
+/// I/O errors
+#[derive(Debug, thiserror::Error)]
+enum IoError {
+    /// Sending error
+    #[error("send error")]
+    SendError,
+    /// Receiving error
+    #[error("receive error")]
+    ReceiveError,
+}
+
+/// Bugs
+#[derive(Debug, thiserror::Error)]
+enum Bug {
+    /// Arithmetic error
+    #[error("arithmetic error")]
+    ArithmeticError,
 }
 
 /// Protocol error
