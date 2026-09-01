@@ -20,7 +20,7 @@ use alloc::{string::String, vec::Vec};
 use core::iter::once;
 use generic_ec::{Curve, Point, Scalar, SecretScalar};
 use generic_ec_zkp::polynomial::Polynomial;
-use rand_core::{RngCore, CryptoRng};
+use rand_core::{CryptoRng, RngCore};
 use round_based::{
     PartyIndex, ProtocolMsg,
     mpc::{Mpc, MpcExecution},
@@ -288,7 +288,9 @@ where
         .iter()
         .any(|m| m.digest != echo_digest)
     {
-        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+        Err(KeygenError(Reason::KeygenAbort(
+            KeygenAbort::VerificationFailure(VerificationFailure::EchoAgreementOnPointsCommitment),
+        )))
     } else if received_echo_digests_and_decommit_points
         .iter_indexed()
         .zip(received_points_commitments.iter_indexed())
@@ -302,7 +304,9 @@ where
             c.commitment != hash::<Sha256>(&committed_points)
         })
     {
-        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+        Err(KeygenError(Reason::KeygenAbort(
+            KeygenAbort::VerificationFailure(VerificationFailure::PointsCommitment),
+        )))
     } else if received_decommit_subshares
         .iter_indexed()
         .zip(received_subshare_commitments.iter_indexed())
@@ -317,7 +321,9 @@ where
             c.commitment != hash::<Sha256>(&committed_subshare)
         })
     {
-        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+        Err(KeygenError(Reason::KeygenAbort(
+            KeygenAbort::VerificationFailure(VerificationFailure::SubshareCommitment),
+        )))
     } else {
         // Verify expected share curve point
         let share_points: Vec<Point<E>> = (0..t)
@@ -354,7 +360,9 @@ where
         };
 
         if share_curve_point != expected_share_curve_point {
-            Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+            Err(KeygenError(Reason::KeygenAbort(
+                KeygenAbort::VerificationFailure(VerificationFailure::ExpectedSharePoint),
+            )))
         } else {
             // Send ok
             let verify = VerifyMsg { ok: true };
@@ -375,7 +383,9 @@ where
 
     // Output
     if received_verifications.iter().any(|v| !v.ok) {
-        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::VerificationFailure)))
+        Err(KeygenError(Reason::KeygenAbort(
+            KeygenAbort::VerificationFailure(VerificationFailure::UnexpectedResult),
+        )))
     } else {
         verification
     }
@@ -389,7 +399,9 @@ fn check_arguments(
     if 2 <= n && (1 <= t && t <= n) && (i < n) {
         Ok((i, t, n))
     } else {
-        Err(KeygenError(Reason::KeygenAbort(KeygenAbort::InvalidArgument)))
+        Err(KeygenError(Reason::KeygenAbort(
+            KeygenAbort::InvalidArgument,
+        )))
     }
 }
 
@@ -457,7 +469,22 @@ enum KeygenAbort {
     InvalidArgument,
     /// Verification failure
     #[error("verification failure")]
-    VerificationFailure,
+    VerificationFailure(#[source] VerificationFailure),
+}
+
+/// Verification failure
+#[derive(Debug, thiserror::Error)]
+enum VerificationFailure {
+    #[error("echo agreement on points commitment")]
+    EchoAgreementOnPointsCommitment,
+    #[error("points commitment")]
+    PointsCommitment,
+    #[error("subshare commitment")]
+    SubshareCommitment,
+    #[error("expected share point")]
+    ExpectedSharePoint,
+    #[error("unexpected verification result")]
+    UnexpectedResult,
 }
 
 /// I/O errors
@@ -533,7 +560,7 @@ mod tests {
     use generic_ec::{Curve, Point, Scalar, curves::Secp256k1};
     use generic_ec_zkp::polynomial::lagrange_coefficient;
     use rand::seq::SliceRandom;
-    use rand_core::{RngCore, CryptoRng};
+    use rand_core::{CryptoRng, RngCore};
 
     const SID: &[u8] = b"test-session";
 
@@ -565,12 +592,8 @@ mod tests {
     /// Validates a threshold keygen output:
     /// - every party agrees on the shared public key P(0) and the session id.
     /// - all n shares lie on one degree-(t-1) polynomial.
-    fn validate<E: Curve, R>(
-        rng: &mut R,
-        t: u16,
-        n: u16,
-        key_shares: &[KeyShare<E>],
-    ) where 
+    fn validate<E: Curve, R>(rng: &mut R, t: u16, n: u16, key_shares: &[KeyShare<E>])
+    where
         R: RngCore + CryptoRng,
     {
         assert_eq!(key_shares.len(), usize::from(n));
@@ -581,9 +604,8 @@ mod tests {
         }
 
         // The party at 0-based index `i` holds the share at evaluation point `i + 1` (the 1-based party label).
-        let all: Vec<(u16, Scalar<E>)> = (1..=n)
-            .zip(key_shares.iter().map(|k| k.share_i))
-            .collect();
+        let all: Vec<(u16, Scalar<E>)> =
+            (1..=n).zip(key_shares.iter().map(|k| k.share_i)).collect();
         let subset: Vec<(u16, Scalar<E>)> =
             all.choose_multiple(rng, usize::from(t)).copied().collect();
 
