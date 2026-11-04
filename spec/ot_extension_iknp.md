@@ -8,7 +8,7 @@ The consistency check of IKNP is based on KOS15, which has a flaw in its proof a
 
 ## Parameters
 
-- Number of columns in the matrix used internally, also viewed as computational security parameter: $\kappa$
+- Number of columns in the matrix used internally, also viewed as computational security parameter: $\kappa = \lambda_c$
 - Statistical security parameter: $\lambda_s$
 - Number of rows as delivered OTs: $m$
 - Number of rows including consistency check: $m' = m + \kappa + \lambda_s$
@@ -18,7 +18,7 @@ The consistency check of IKNP is based on KOS15, which has a flaw in its proof a
 
 ## Functions
 
-- PRG for $\kappa$ columns and $m'$ rows: $G: \lbrace 0,1 \rbrace^\kappa \to \lbrace 0,1 \rbrace^{m'}$
+- PRG with $\kappa$-bit seed for $m'$ rows: $G: \lbrace 0,1 \rbrace^\kappa \to \lbrace 0,1 \rbrace^{m'}$
 - Hash with row-wise correlation robustness: $H: [m] \times \lbrace 0,1 \rbrace^\kappa \times \mathbb{X}$
 - Non-programmable random oracle: $H_\Chi: \lbrace 0,1 \rbrace^\ast \to (\mathbb{F}_{2^\kappa})^{m'}$
 - Base 1-of-2 OT such as [Endemic OT](endemic_ot.md): $F_\mathsf{BOT}$
@@ -67,10 +67,10 @@ Alice as OT extension sender:
 ## Output: $m$ OTs
 
 Alice:
-- For each row $i in [m]$, output
-    - $m_{i,0} = H(i, q_i)
-    - $m_{i,1} = H(i, q_i \oplus s)
+- For each row $i \in [m]$, output
+    - $m_{i,0} = H(i, q_i)$
+    - $m_{i,1} = H(i, q_i \oplus s)$
 
 Bob:
-- For each row $i in [m]$, output
+- For each row $i \in [m]$, output
     - $m_{i,r_i} = H(i, t_i)$
