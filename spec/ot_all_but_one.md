@@ -60,5 +60,5 @@ Bob:
 - $F(y) = G'_1(s^k_y)$ for every $y \in [2^k]$
 
 Alice:
-- $x^*$
+- Puncture $x^*$
 - $F_y) = G'_1(s^k_y)$ for every $y \neq x^*$
