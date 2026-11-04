@@ -28,12 +28,12 @@
 ## Round 1: Setup
 
 Between Alice and Bob :
-- Run all-but-one OT $F_\mathsf{AOT}(2^k, n_c, k)$:
-    - For each column $j$:
-        - Alice gets 
-            - Uniform choice value $\Delta_j \in \mathbb{F}_{2^k}$
-            - All-but-one seeds $\rho^j(x)$ for every $x \neq \Delta_j$ 
-        - Bob gets all seeds $\rho^j(x)$ for every $x \in \mathbb{F}_{2^k}$
+-  For column $j \in [n_c]$:
+    - Run all-but-one OT $F_\mathsf{AOT}(2^k, k)$
+    - Alice gets 
+        - Uniform choice value $\Delta_j \in \mathbb{F}_{2^k}$
+        - All-but-one seeds $\rho^j(x)$ for every $x \neq \Delta_j$ 
+    - Bob gets all seeds $\rho^j(x)$ for every $x \in \mathbb{F}_{2^k}$
 
 ## Round 2: Bob
 
