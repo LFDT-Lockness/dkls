@@ -28,7 +28,7 @@
 ## Round 1: Setup
 
 Between Alice and Bob :
-- Run all-but-one OT $F_AOT$:
+- Run all-but-one OT $F_\mathsf{AOT}(2^k, n_c, k)$:
     - For each column $j$:
         - Alice gets 
             - Uniform choice value $\Delta_j \in \mathbb{F}_{2^k}$
